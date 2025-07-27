@@ -1,0 +1,43 @@
+@Metadata.layer: #CORE
+annotate entity ZC_FILE_UPLOAD_DATA with
+{
+  @UI.facet: [{
+   id: 'SES',
+   type: #FIELDGROUP_REFERENCE,
+   purpose: #STANDARD,
+   label: 'SES',
+   targetQualifier: 'SESDetails'
+  }]
+  @UI.lineItem: [{ position: 1 }]
+  EndUser;
+  @UI.lineItem: [{ position: 10 , label: 'DeliveryNote' }]
+  //{ type: #FOR_ACTION, dataAction: 'createSO', label: 'Process SO', invocationGrouping: #CHANGE_SET }]
+  @UI.fieldGroup: [{ position: 10 , label: 'DeliveryNoter', qualifier: 'SESDetails' }]
+  Delnotenum;
+  @UI.lineItem: [{ position: 30 , label: 'Item' }]
+  @UI.fieldGroup: [{ position: 30 , label: 'Item', qualifier: 'SESDetails' }]
+  Itemno;
+  @UI.lineItem: [{ position: 20 , label: 'Deliverydate' }]
+  @UI.fieldGroup: [{ position: 20 , label: 'Deliverydate', qualifier: 'SESDetails' }]
+  @Consumption.semanticObject: 'SalesOrder'
+  Deliverydate;
+  @UI.lineItem: [{ position: 40 , label: 'PO Number' }]
+  @UI.fieldGroup: [{ position: 40 , label: 'PO Number', qualifier: 'SESDetails' }]
+
+  Ponumber;
+  @UI.lineItem: [{ position: 50 , label: 'Material' }]
+  @UI.fieldGroup: [{ position: 50 , label: 'Material', qualifier: 'SESDetails' }]
+  Material;
+  @UI.lineItem: [{ position: 60 , label: 'Quantity' }]
+  @UI.fieldGroup: [{ position: 60 , label: 'Quantity', qualifier: 'SESDetails' }]
+  Quantity;
+  @UI.lineItem: [{ position: 70 , label: 'Unit' }]
+  @UI.fieldGroup: [{ position: 70 , label: 'Unit', qualifier: 'SESDetails' }]
+  Unit;
+  //  @UI.lineItem: [{ position: 130 , label: 'Error' }]
+  //  @UI.fieldGroup: [{ position: 130 , label: 'Error' ,qualifier: 'SESDetails'}]
+  ////  Error;
+  ////  @UI.lineItem: [{ position: 140 , label: 'Error Message' }]
+  ////  @UI.fieldGroup: [{ position: 140 , label: 'Error Message', qualifier: 'SESDetails' }]
+  ////  ErrorMessage;
+}

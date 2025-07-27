@@ -1,0 +1,50 @@
+managed implementation in class zbp_i_file_table unique;
+strict ( 2 );
+with draft;
+
+define behavior for ZI_FILE_TABLE //alias <alias_name>
+persistent table zfile_table
+lock master
+total etag end_user
+draft table zfile_tabled
+authorization master ( instance )
+etag master end_user
+
+{
+  create ( authorization : global );
+  update;
+  delete;
+  field ( readonly ) end_user;
+  // Logic to convert uploaded file into internal table and save to the child entity is written here
+  action ( features : instance ) uploadData result [1] $self;
+  association _ses_excel { create; with draft; }
+
+  determination fields on modify { field Filename; }
+  draft action Edit;
+  draft action Activate;
+  draft action Discard;
+  draft action Resume;
+  draft determine action Prepare;
+
+  mapping for zfile_table corresponding
+    {
+      end_user = end_user;
+    }
+}
+
+define behavior for ZI_FILE_UPLOAD_DATA //alias <alias_name>
+persistent table zfile_uploaddt
+lock dependent by _ses_file
+draft table zfile_uploadd
+authorization dependent by _ses_file
+//etag master <field_name>
+{
+  update;
+  delete;
+  field ( readonly ) EndUser, Delnotenum, Itemno;
+  association _ses_file { with draft; }
+  mapping for zfile_uploaddt corresponding
+    {
+      enduser = end_user;
+    }
+}

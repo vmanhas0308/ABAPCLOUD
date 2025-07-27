@@ -1,0 +1,5 @@
+@EndUserText.label: 'Service Def File DOX'
+define service ZSDEF_FILEDOX {
+  expose ZC_FILE_TABLE       as FileMetaData;
+  expose ZC_FILE_UPLOAD_DATA as FileActualData;
+}

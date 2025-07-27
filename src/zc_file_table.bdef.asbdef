@@ -1,0 +1,28 @@
+projection;
+strict ( 2 );
+use draft;
+
+define behavior for ZC_FILE_TABLE //alias <alias_name>
+{
+  //use create;
+  field ( readonly ) Local_Last_Changed_At;
+  use update;
+  use delete;
+  use action uploadData;
+
+  use action Edit;
+  use action Activate;
+  use action Discard;
+  use action Resume;
+  use action Prepare;
+
+  use association _ses_excel { create; with draft; }
+}
+
+define behavior for ZC_FILE_UPLOAD_DATA //alias <alias_name>
+{
+  use update;
+  use delete;
+
+  use association _ses_file { with draft; }
+}
