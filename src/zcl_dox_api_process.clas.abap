@@ -4,8 +4,8 @@ CLASS zcl_dox_api_process DEFINITION
   CREATE PUBLIC.
 
   PUBLIC SECTION.
-    CONSTANTS c_api_url  TYPE string VALUE ''.
-    CONSTANTS c_api_path TYPE string VALUE ''.
+    CONSTANTS c_api_url  TYPE string VALUE 'https://aiservices-trial-dox.cfapps.us10.hana.ondemand.com'.
+    CONSTANTS c_api_path TYPE string VALUE '/document-information-extraction/v1'.
 
     DATA gv_oauth TYPE string.
 
@@ -28,8 +28,6 @@ CLASS zcl_dox_api_process DEFINITION
     METHODS get_job_status
       IMPORTING i_job               TYPE string
       RETURNING VALUE(r_job_status) TYPE string.
-
-    METHODS read_file IMPORTING i_file_content TYPE xstring.
 
 ENDCLASS.
 
@@ -173,8 +171,8 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
     DATA(lo_request_part2) = lo_request->add_multipart( ).
 
     " prepare JSON Pay-load
-    lv_options = |\{ "extraction": \{ "headerFields": [ "documentNumber", "purchaseOrderNumber", "grossAmount" ], "lineItemFields": [ "netAmount" ] \},| &&
-                 |"clientId": "default", "documentType": "invoice", "receivedDate": "2020-02-17", "enrichment": \{ "sender": \{ "top": 5, "type":| &&
+    lv_options = |\{ "extraction": \{ "headerFields": [ "deliveryNoteNumber", "purchaseOrderNumber", "deliveryDate" ], "lineItemFields": [ "materialNumber", "quantity", "unitOfMeasure" ] \},| &&
+                 |"clientId": "default", "documentType": "Custom", "receivedDate": "2025-07-28", "enrichment": \{ "sender": \{ "top": 5, "type":| &&
                  |"businessEntity", "subtype": "supplier" \}, "employee": \{ "type": "employee" \} \}\}|.
 
     lo_request_part2->set_header_field( i_name  = `Content-Disposition` ##NO_TEXT
@@ -182,7 +180,7 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
     " TODO: variable is assigned but never used (ABAP cleaner)
     DATA(lv_value) = lo_request_part2->set_text( i_text = lv_options ).
     DATA(lo_request_part) =  lo_request->add_multipart( ).
-    lv_content_disposition = |form-data; name="file"; filename=sample-invoice.pdf |.
+    lv_content_disposition = |form-data; name="file"; filename=sample-delivery_note.pdf |.
     lo_request_part->set_header_field( i_name  = `Content-Disposition` ##NO_TEXT
                                        i_value = lv_content_disposition ).
     lo_request_part->set_content_type( 'application/pdf' ).
@@ -206,14 +204,6 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
     /ui2/cl_json=>deserialize( EXPORTING json        = lv_response_json
                                          pretty_name = /ui2/cl_json=>pretty_mode-camel_case
                                CHANGING  data        = ls_create_job_response ).
-
-*    " Step 5: Execute HTTP request
-*    TRY.
-*        lo_response = lo_http_client->execute( if_web_http_client=>post ).
-*      CATCH cx_web_http_client_error.
-*        " handle exception
-*        RETURN.
-*    ENDTRY.
 
     " Step 6: Check status
     DATA(lv_status) = lo_response->get_status( ).
@@ -309,24 +299,4 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
     ENDTRY.
   ENDMETHOD.
 
-  METHOD read_file.
-*  DATA:lv_input_len TYPE i.
-*  DATA:lv_file_content TYPE xstring.
-* DATA: lt_file TYPE STANDARD TABLE OF x WITH EMPTY KEY.
-*        CALL FUNCTION 'SCMS_BINARY_TO_XSTRING'
-*      EXPORTING
-*        input_length = lv_input_len
-*      IMPORTING
-*        buffer       = lv_file_content
-*      TABLES
-*        binary_tab   = lt_file.
-
-*    DATA(lo_instance) = NEW zcl_dox_api_process( ).
-*
-*    IF lo_instance->authenticate( ) = abap_true.
-*
-*      lo_instance->send_file_2_DOXSRV( i_file_content ).
-*
-*    ENDIF.
-  ENDMETHOD.
 ENDCLASS.
