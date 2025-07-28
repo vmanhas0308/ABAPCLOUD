@@ -242,12 +242,15 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
     " add multi-part request
     DATA(lo_request_part2) = lo_request->add_multipart( ).
     "use Schema ID and Template ID
-    lv_options = '{ "clientId": "default", "documentType": "custom", "templateId": "DELNOTE", ' &&
-                 '"schemaId": "Delivery_Note_Schema", ' &&
-                 '"receivedDate": "2025-07-28"' && '}'.
+*    lv_options = '{ "clientId": "default", "documentType": "custom", "templateId":"detect", ' &&
+*                 '"schemaName": "Delivery_Note_Schema", ' &&
+*                 '"receivedDate": "2025-07-28"' && '}'.
 
     "If no schema/template ID then prepare JSON Pay-load for header Item
-*    lv_options = '{ "extraction": { "headerFields": [ "deliveryNoteNumber", "purchaseOrderNumber", "deliveryDate" ], "lineItemFields": [ "materialNumber", "quantity", "unitOfMeasure" ] },' &&
+    lv_options = '{ "extraction": { "headerFields": [ "deliveryNoteNumber", "purchaseOrderNumber", "deliveryDate" ], "lineItemFields": [ "materialNumber", "quantity", "unitOfMeasure" ] },' &&
+                   '"clientId": "default", "documentType": "custom", "receivedDate": "2025-07-28", "enrichment": { }}'.
+
+*lv_options = '{ "extraction": { "headerFields": [ "deliveryNoteNumber", "purchaseOrderNumber", "deliveryDate" ], "lineItemFields": [ "materialNumber", "quantity", "unitOfMeasure" ] },' &&
 *                   '"clientId": "default", "documentType": "custom", "receivedDate": "2025-07-28", "enrichment": { "sender": { "top": 5, "type": ' &&
 *                   '"businessEntity", "subtype": "supplier" }, "employee": { "type": "employee" } }}'.
 *    lv_options = |\{ "extraction": \{ "headerFields": [ "deliveryNoteNumber", "purchaseOrderNumber", "deliveryDate" ], "lineItemFields": [ "materialNumber", "quantity", "unitOfMeasure" ] \},| &&
