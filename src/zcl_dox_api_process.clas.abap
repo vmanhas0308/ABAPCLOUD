@@ -239,15 +239,14 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
     lo_request->set_header_field( i_name  = 'Accept'
                                   i_value = 'application/json' ).
 
-    " Set multipart content type (boundary is handled automatically)
-    lo_request->set_content_type( content_type = 'multipart/form-data' ).
     " add multi-part request
     DATA(lo_request_part2) = lo_request->add_multipart( ).
+    "use Schema ID and Template ID
     lv_options = '{ "clientId": "default", "documentType": "custom", "templateId": "DELNOTE", ' &&
                  '"schemaId": "Delivery_Note_Schema", ' &&
                  '"receivedDate": "2025-07-28"' && '}'.
 
-    " prepare JSON Pay-load
+    "If no schema/template ID then prepare JSON Pay-load for header Item
 *    lv_options = '{ "extraction": { "headerFields": [ "deliveryNoteNumber", "purchaseOrderNumber", "deliveryDate" ], "lineItemFields": [ "materialNumber", "quantity", "unitOfMeasure" ] },' &&
 *                   '"clientId": "default", "documentType": "custom", "receivedDate": "2025-07-28", "enrichment": { "sender": { "top": 5, "type": ' &&
 *                   '"businessEntity", "subtype": "supplier" }, "employee": { "type": "employee" } }}'.
@@ -255,18 +254,18 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
 *                 |"clientId": "default", "documentType": "Custom", "receivedDate": "2025-07-28", "enrichment": \{ "sender": \{ "top": 5, "type":| &&
 *                 |"businessEntity", "subtype": "supplier" \}, "employee": \{ "type": "employee" \} \}\}|.
 
-    lo_request_part2->set_header_field( i_name  = `Content-Disposition` ##NO_TEXT
-                                        i_value = |form-data; name="options"; type=application/json| ). "; type=application/json
-*    lo_request_part2->set_header_field(
-*                                            i_name  = 'Content-Type'
-*                                            i_value = 'application/json' ).
+    lo_request_part2->set_header_field( i_name  = 'Content-Disposition' ##NO_TEXT
+                                        i_value = 'form-data; name="options"' ). "; type=application/json
+    lo_request_part2->set_header_field(
+                                            i_name  = 'Content-Type'
+                                            i_value = 'application/json' ).
     " TODO: variable is assigned but never used (ABAP cleaner)
     DATA(lv_value) = lo_request_part2->set_text( i_text = lv_options ).
 
     "File Part
     DATA(lo_request_part) =  lo_request->add_multipart( ).
-    lv_content_disposition = |form-data; name="file"; filename=delivery_note.pdf |.
-    lo_request_part->set_header_field( i_name  = `Content-Disposition` ##NO_TEXT
+    lv_content_disposition = 'form-data; name="file"; filename="delivery_note.pdf'.
+    lo_request_part->set_header_field( i_name  = 'Content-Disposition' ##NO_TEXT
                                        i_value = lv_content_disposition ).
     lo_request_part->set_content_type( 'application/pdf' ).
 
