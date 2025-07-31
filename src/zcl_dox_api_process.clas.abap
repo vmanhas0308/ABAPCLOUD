@@ -75,7 +75,7 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD authenticate.
-    " NEW LOGIC
+    " Step 1: Authenticate and get OAuth token
     " URL from UAA part of service key
     DATA(lv_url_token) = |https://bde4bf6atrial.authentication.us10.hana.ondemand.com/oauth/token|.
 
@@ -85,7 +85,7 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
             i_destination = cl_http_destination_provider=>create_by_url( i_url = lv_url_token ) ).
 
         " Execute GET method
-        " TODO: variable is assigned but only used in commented-out code (ABAP cleaner)
+        " TODO: variable is assigned but never used (ABAP cleaner)
         DATA(lo_request) = lo_http_client->get_http_request(
         )->set_header_field( i_name  = 'Content-Type'
                              i_value = 'application/x-www-form-urlencoded'
@@ -119,61 +119,6 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
       CATCH cx_http_dest_provider_error.
 
     ENDTRY.
-
-    " END OF NEW LOGIC
-    " Step 1: Get HTTP client instance
-*    TRY.
-*        DATA(lo_http_client) = get_client( ).
-*      CATCH cx_web_http_client_error INTO DATA(lx_client_error). " TODO: variable is assigned but never used (ABAP cleaner)
-*        " handle exception
-*    ENDTRY.
-*
-*    " Step 2: Get the HTTP request object
-*    DATA(lo_request) = lo_http_client->get_http_request( ).
-*
-*    " Step 3: Set headers
-*    " if_http_header_fields_sap=>request_method
-*    lo_request->set_header_field( i_name  = '~request_method'
-*                                  i_value = 'POST' ).
-*    lo_request->set_header_field( i_name  = 'grant_type'
-*                                  i_value = 'client_credentials' ).
-*
-*    " if_http_header_fields_sap=>request_uri
-*    lo_request->set_header_field( i_name  = '~request_uri'
-*                                  i_value = '/oauth/token?grant_type=client_credentials' ). " Set only the path, not full URL
-
-*    " Step 5: Execute HTTP request
-*    TRY.
-*        DATA(lo_response) = lo_http_client->execute( if_web_http_client=>post ).
-*      CATCH cx_web_http_client_error.
-*        " handle exception
-*        r_authenticated = abap_false.
-*        RETURN.
-*    ENDTRY.
-*
-*    " Step 6: Check status
-*    DATA(lv_status) = lo_response->get_status( ).
-*
-*    IF lv_status-code = 200.
-*
-*      " Step 7: Get response text
-*      DATA(lv_responsetext) = lo_response->get_text( ).
-*
-*      " Optional: extract token using simple split (for demo), better: parse JSON
-*      DATA(lv_token) = ||.
-*      " TODO: variable is assigned but never used (ABAP cleaner)
-*      SPLIT lv_responsetext AT '"access_token":"' INTO DATA(lv_garbage) lv_token.
-*      " TODO: variable is assigned but never used (ABAP cleaner)
-*      SPLIT lv_token AT '"' INTO lv_token DATA(lv_remainder).
-*
-*      r_authenticated = abap_true.
-*      " TODO: variable is assigned but never used (ABAP cleaner)
-*      DATA(m_oauth) = lv_token.  " Save token if needed
-*      gv_oauth = lv_token. " Save token globally for later use
-*
-*    ELSE.
-*      r_authenticated = abap_false.
-*    ENDIF.
   ENDMETHOD.
 
   METHOD send_file_2_DOXSRV.
@@ -217,102 +162,12 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
 
     " Step 2: Get the HTTP request object
     DATA(lo_request) = lo_http_client->get_http_request( ).
-
-*    " NEW CODE ----------------------------------
-*    CONSTANTS c_boundary TYPE string VALUE '----DOCBOUNDARY123456'.
-*    CONSTANTS c_ct_opts  TYPE string VALUE 'application/json'.
-*    CONSTANTS c_ct_file  TYPE string VALUE 'application/pdf'.
-*    TYPES: BEGIN OF ty_options,
-*             clientId     TYPE string,
-*             documentType TYPE string,
-*             schemaName   TYPE string,
-*             templateId   TYPE string, " or type d, but for JSON usually string
-*             receivedDate TYPE string, " or type d, but for JSON usually string
-*           END OF ty_options.
-*
-*    DATA ls_opts TYPE ty_options.
-*    " Prepare JSON payload for options
-*    ls_opts = VALUE #( clientId     = 'default'
-*                       documentType = 'custom'   " or 'custom'
-*                       schemaName   = 'Delivery_Note_Schema'  " required if custom
-*                       templateId   = 'detect'
-*                       receivedDate = sy-datum ). " or any date you want to set, format as needed
-*    DATA lv_opts_json TYPE string.
-*    lv_opts_json = /ui2/cl_json=>serialize( data = ls_opts ).
-*
-*    " Build multipart body
-*    DATA(lv_body) = |--{ c_boundary }\r\n| &&
-*                     |Content-Disposition: form-data; name="options"\r\n| &&
-*                     |Content-Type: { c_ct_opts }\r\n\r\n| &&
-*                     |{ lv_opts_json } \r\n| &&
-*                     |--{ c_boundary }\r\n| &&
-*                     |Content-Disposition: form-data; name="file"; filename="delivery_note.pdf"\r\n| &&
-*                     |Content-Type: { c_ct_file }\r\n\r\n| &&
-*                     |{  i_file_content }\r\n| &&
-*                     |--{ c_boundary }--|.
-*
-**    " Setup HTTP destination
-**    DATA(lo_dest) = cl_http_destination_provider=>create_by_url(
-**                       i_url = |{ gv_base_url }/document-information-extraction/v1/document/jobs|
-**                     ).
-**    DATA lo_client = cl_web_http_client_manager=>create_by_http_destination( lo_dest ).
-**
-**    lo_http_client->get_http_request( )->set_method( if_web_http_request=>co_request_method_post ).
-*    lo_http_client->get_http_request( )->set_uri_path( |{ c_api_path }/document/jobs| ).
-*    lo_http_client->get_http_request( )->set_header_field( i_name  = 'Authorization'
-*                                                           i_value = |Bearer { gv_oauth }| ).
-*    lo_http_client->get_http_request( )->set_header_field( i_name  = 'Accept'
-*                                                           i_value = 'application/json' ).
-*    lo_http_client->get_http_request( )->set_header_field( i_name  = 'Content-Type'
-*                                                           i_value = |multipart/form-data; boundary={ c_boundary }| ).
-*
-*    lo_http_client->get_http_request( )->set_text( lv_body ).
-*
-*    TRY.
-*        DATA(lo_response) = lo_http_client->execute( if_web_http_client=>post ).
-*      CATCH cx_web_http_client_error.
-*        " handle exception
-*    ENDTRY.
-*
-*    DATA(lv_status) = lo_response->get_status( ).
-*
-*    IF lv_status-code = 202 OR lv_status-code = 201.
-*      " TODO: variable is assigned but only used in commented-out code (ABAP cleaner)
-*      DATA(lv_response_text) = lo_response->get_text( ).
-*      " Parse JSON to extract job id
-**      DATA(ls_resp) TYPE your_response_struct.
-**      CALL METHOD /ui2/cl_json=>deserialize
-**        EXPORTING
-**          json = lv_response_text
-**        CHANGING
-**          data = ls_resp.
-**      r_job = ls_resp-id.
-**      r_success = abap_true.
-**    ELSE.
-**      DATA(lv_error) = lo_response->get_text( ).
-**      " Log or raise for diagnostics
-**      r_success = abap_false.
-*    ENDIF.
-*
-*    TRY.
-*        lo_http_client->close( ).
-*      CATCH cx_web_http_client_error.
-*        " handle exception
-*    ENDTRY.
-
-*******************************NEW CODE **********************************
-*    " Step 3: Set headers
-*    lo_request->set_header_field( i_name  = '~request_method'
-*                                  i_value = 'POST' ).
-
-*    lo_request->set_header_field( i_name  = '~request_uri'
-*                                  i_value = |{ c_api_path }/document/jobs| ).
     " Set the correct URI
     lo_request->set_uri_path( |{ c_api_path }/document/jobs| ).
     " Use the token obtained from authenticate method
     lo_request->set_header_field( i_name  = 'Authorization'
                                   i_value = |Bearer { gv_oauth }| ).
-
+    " Set Form Data
     lo_request->set_content_type( content_type = 'multipart/form-data' ).
 
     lo_request->set_formfield_encoding( formfield_encoding = 0 ).
@@ -330,13 +185,6 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
 *    "If no schema/template ID then prepare JSON Pay-load for header Item
 *    lv_options = '{ "extraction": { "headerFields": [ "deliveryNoteNumber", "purchaseOrderNumber", "deliveryDate" ], "lineItemFields": [ "materialNumber", "quantity", "unitOfMeasure" ] },' &&
 *                   '"clientId": "default", "documentType": "custom", "receivedDate": "2025-07-28", "enrichment": { }}'.
-
-*lv_options = '{ "extraction": { "headerFields": [ "deliveryNoteNumber", "purchaseOrderNumber", "deliveryDate" ], "lineItemFields": [ "materialNumber", "quantity", "unitOfMeasure" ] },' &&
-*                   '"clientId": "default", "documentType": "custom", "receivedDate": "2025-07-28", "enrichment": { "sender": { "top": 5, "type": ' &&
-*                   '"businessEntity", "subtype": "supplier" }, "employee": { "type": "employee" } }}'.
-*    lv_options = |\{ "extraction": \{ "headerFields": [ "deliveryNoteNumber", "purchaseOrderNumber", "deliveryDate" ], "lineItemFields": [ "materialNumber", "quantity", "unitOfMeasure" ] \},| &&
-*                 |"clientId": "default", "documentType": "Custom", "receivedDate": "2025-07-28", "enrichment": \{ "sender": \{ "top": 5, "type":| &&
-*                 |"businessEntity", "subtype": "supplier" \}, "employee": \{ "type": "employee" \} \}\}|.
 
     lo_request_part2->set_header_field( i_name  = 'Content-Disposition' ##NO_TEXT
                                         i_value = 'form-data; name="options"' ). "; type=application/json
@@ -364,9 +212,9 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
       CATCH cx_web_http_client_error INTO lx_client_error.
         " handle exception
     ENDTRY.
+
     " TODO: variable is assigned but never used (ABAP cleaner)
     DATA(ls_status) = lo_response->get_status( ).
-*CATCH cx_web_message_error.
     DATA(lv_response_json) = lo_response->get_text( ).
     /ui2/cl_json=>deserialize( EXPORTING json        = lv_response_json
                                          pretty_name = /ui2/cl_json=>pretty_mode-camel_case
@@ -387,7 +235,6 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD get_job_status.
-*    DATA lr_data         TYPE REF TO data.
     " TODO: variable is never used (ABAP cleaner)
     DATA: BEGIN OF ls_job_status,
             status TYPE string,
@@ -429,7 +276,6 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
     DATA ls_extraction_data TYPE ty_extraction_data.
     DATA ls_line_item       TYPE ty_line_item.
     DATA lt_json_data       TYPE REF TO data.
-*    DATA lv_value           TYPE string.
 
     CLEAR r_job_status.
 
@@ -445,17 +291,9 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
 
     " Step 2: Get the HTTP request object
     DATA(lo_http_request) = lo_http_client->get_http_request( ).
-    " Step 3: Set headers
-*    lo_http_request->set_header_field( i_name  = '~request_method'
-*                                       i_value = 'GET' ).
-*
-*    lo_http_request->set_header_field( i_name  = '~request_uri'
-*                                       i_value = |{ c_api_path }/document/jobs/{ i_job }| ).
     " Set the correct URI
     lo_http_request->set_uri_path( |{ c_api_path }/document/jobs/{ i_job }| ).
 
-*    lo_http_request->set_header_field( i_name  =  if_http_header_fields_sap=>request_method  i_value =  if_http_request=>co_request_method_get ).
-*    lo_http_request->set_header_field( i_name  =  if_http_header_fields_sap=>request_uri  i_value =  |{ c_api_path }/document/jobs/{ i_job }| ).
     lo_http_request->set_header_field( i_name  = 'Authorization'
                                        i_value = |Bearer { gv_oauth }| ).
 
@@ -465,18 +303,11 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
         " handle exception
     ENDTRY.
     DATA(ls_status) = lo_response->get_status( ).
-*CATCH cx_web_message_error.
     DATA(lv_response_json) = lo_response->get_text( ).
-*    /ui2/cl_json=>deserialize( EXPORTING json        = lv_response_json
-*                                         pretty_name = /ui2/cl_json=>pretty_mode-camel_case
-*                               CHANGING  data        = lr_data ).
 
     IF ls_status-code = '200'.
-
       " Extract data from the response and set to global table  gt_extracted_data
-
       " Your existing code to get the response...
-
       /ui2/cl_json=>deserialize( EXPORTING json        = lv_response_json
                                            pretty_name = /ui2/cl_json=>pretty_mode-camel_case
                                  CHANGING  data        = lt_json_data ).
@@ -484,7 +315,6 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
       " Extract status
       ASSIGN lt_json_data->('STATUS') TO FIELD-SYMBOL(<status>).
       IF <status> IS ASSIGNED.
-*      lv_value = <status>.
         ls_extraction_data-status = <status>->*.
       ENDIF.
       IF ls_extraction_data-status = 'DONE'.
@@ -504,19 +334,12 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
                 IF sy-subrc = 0 AND <value> IS NOT INITIAL.
                   <hf>-name  = <name>->*.
                   <hf>-value = <value>->*.
-
-                  " Map other fields if needed
-*                  ASSIGN COMPONENT 'CATEGORY' OF STRUCTURE <header_field> TO FIELD-SYMBOL(<category>).
-*                  IF sy-subrc = 0.
-*                    <hf>-category = <category>->*.
-*                  ENDIF.
                 ENDIF.
               ENDLOOP.
             ENDIF.
           ENDIF.
         ENDIF.
 
-        " Extract line items
         " Extract line items
         ASSIGN lt_json_data->('EXTRACTION') TO <extraction>.
         IF <extraction> IS ASSIGNED.
@@ -556,11 +379,11 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
           ENDIF.
         ENDIF.
 
-        " Assign the extracted data to the global table and return job statu
+        " Assign the extracted data to the global table and return job status
         r_job_status = ls_extraction_data-status.
         " First clear the target table
         CLEAR gt_extracted_data.
-        DATA:lv_posnr TYPE posnr_va.
+        DATA lv_posnr TYPE posnr_va.
         LOOP AT ls_extraction_data-line_items INTO DATA(ls_item).
           APPEND INITIAL LINE TO gt_extracted_data ASSIGNING FIELD-SYMBOL(<fs_target>).
 
@@ -569,7 +392,7 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
           <fs_target>-quantity = ls_item-quantity.
           <fs_target>-unit     = ls_item-unit_of_measure.
           lv_posnr += 10.
-          <fs_target>-itemno  = lv_posnr.
+          <fs_target>-itemno = lv_posnr.
           LOOP AT ls_extraction_data-header_fields INTO DATA(ls_header).
             CASE ls_header-name.
               WHEN 'deliveryNoteNumber'.
