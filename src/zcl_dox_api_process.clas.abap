@@ -21,11 +21,12 @@ CLASS zcl_dox_api_process DEFINITION
              success TYPE string,
              info    TYPE string,
            END OF ty_data.
-    TYPES: tt_extracted_data TYPE STANDARD TABLE OF zfile_uploaddt WITH DEFAULT KEY.
-    DATA:gt_extracted_data TYPE tt_extracted_data.
-    DATA ls_token TYPE ty_token.
-    DATA ls_data  TYPE ty_data.
-    DATA gv_oauth TYPE string.
+    TYPES tt_extracted_data TYPE STANDARD TABLE OF zfile_uploaddt WITH DEFAULT KEY.
+
+    DATA gt_extracted_data TYPE tt_extracted_data.
+    DATA ls_token          TYPE ty_token.
+    DATA ls_data           TYPE ty_data.
+    DATA gv_oauth          TYPE string.
 
     METHODS get_client
       RETURNING VALUE(ro_result) TYPE REF TO if_web_http_client
@@ -39,7 +40,6 @@ CLASS zcl_dox_api_process DEFINITION
     METHODS send_file_2_DOXSRV
       IMPORTING i_file_content           TYPE xstring
       RETURNING VALUE(rt_extracted_data) TYPE  tt_extracted_data.
-
 
     METHODS post_document
       IMPORTING i_file_content TYPE xstring
@@ -75,8 +75,8 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD authenticate.
-**********************NEW LOGIC
-    "URL from UAA part of service key
+    " NEW LOGIC
+    " URL from UAA part of service key
     DATA(lv_url_token) = |https://bde4bf6atrial.authentication.us10.hana.ondemand.com/oauth/token|.
 
     TRY.
@@ -120,7 +120,7 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
 
     ENDTRY.
 
-*********************************************END OF NEW LOGIC
+    " END OF NEW LOGIC
     " Step 1: Get HTTP client instance
 *    TRY.
 *        DATA(lo_http_client) = get_client( ).
@@ -188,7 +188,7 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
       WHILE l_status_job <> 'DONE' AND l_status_job <> 'FAILED'.
         WAIT UP TO 3 SECONDS.
         l_status_job = get_job_status( l_job ).
-        "return extracted data.
+        " return extracted data.
         rt_extracted_data = gt_extracted_data.
       ENDWHILE.
     ENDIF.
@@ -205,8 +205,6 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
     DATA lv_options             TYPE string.
     DATA lv_content_disposition TYPE string.
     DATA len                    TYPE i.
-    DATA:lv_template TYPE string VALUE 'DELNOTE',
-         lv_schemaid TYPE string VALUE 'Delivery_Note_Schema'.
 
     TRY.
         DATA(lo_http_client) = get_client( ).
@@ -302,8 +300,6 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
 *        " handle exception
 *    ENDTRY.
 
-
-
 *******************************NEW CODE **********************************
 *    " Step 3: Set headers
 *    lo_request->set_header_field( i_name  = '~request_method'
@@ -326,10 +322,10 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
 
     " add multi-part request
     DATA(lo_request_part2) = lo_request->add_multipart( ).
-    "use Schema Name and Template ID
-    lv_options = '{ "clientId": "default", "documentType": "custom", "templateId":"detect", ' &&
-                 '"schemaName": "Delivery_Note_Schema", ' &&
-                 '"receivedDate": "2025-07-28"' && '}'.
+    " use Schema Name and Template ID
+    lv_options = |\{ "clientId": "default", "documentType": "custom", "templateId":"detect",| &&
+                 |"schemaName": "Delivery_Note_Schema",| &&
+                 |"receivedDate": "2025-07-28"\}|.
 
 *    "If no schema/template ID then prepare JSON Pay-load for header Item
 *    lv_options = '{ "extraction": { "headerFields": [ "deliveryNoteNumber", "purchaseOrderNumber", "deliveryDate" ], "lineItemFields": [ "materialNumber", "quantity", "unitOfMeasure" ] },' &&
@@ -344,13 +340,12 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
 
     lo_request_part2->set_header_field( i_name  = 'Content-Disposition' ##NO_TEXT
                                         i_value = 'form-data; name="options"' ). "; type=application/json
-    lo_request_part2->set_header_field(
-                                            i_name  = 'Content-Type'
-                                            i_value = 'application/json' ).
+    lo_request_part2->set_header_field( i_name  = 'Content-Type'
+                                        i_value = 'application/json' ).
     " TODO: variable is assigned but never used (ABAP cleaner)
     DATA(lv_value) = lo_request_part2->set_text( i_text = lv_options ).
 
-    "File Part
+    " File Part
     DATA(lo_request_part) =  lo_request->add_multipart( ).
     lv_content_disposition = 'form-data; name="file"; filename="delivery_note.pdf"'.
     lo_request_part->set_header_field( i_name  = 'Content-Disposition' ##NO_TEXT
@@ -392,9 +387,49 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD get_job_status.
-    DATA lv_status_job   TYPE string.
-    DATA l_json_response TYPE string.
-    DATA lr_data         TYPE REF TO data.
+*    DATA lr_data         TYPE REF TO data.
+    " TODO: variable is never used (ABAP cleaner)
+    DATA: BEGIN OF ls_job_status,
+            status TYPE string,
+          END OF ls_job_status.
+
+    TYPES: BEGIN OF ty_coordinates,
+             x TYPE f,
+             y TYPE f,
+             w TYPE f,
+             h TYPE f,
+           END OF ty_coordinates.
+
+    TYPES: BEGIN OF ty_header_field,
+             name        TYPE string,
+             category    TYPE string,
+             value       TYPE string,
+             raw_value   TYPE string,
+             type        TYPE string,
+             page        TYPE i,
+             confidence  TYPE f,
+             coordinates TYPE ty_coordinates,
+           END OF ty_header_field.
+
+    TYPES: BEGIN OF ty_line_item,
+             material_number TYPE string,
+             quantity        TYPE string,
+             unit_of_measure TYPE string,
+           END OF ty_line_item.
+
+    TYPES tt_header_fields TYPE STANDARD TABLE OF ty_header_field WITH DEFAULT KEY.
+    TYPES tt_line_items    TYPE STANDARD TABLE OF ty_line_item WITH DEFAULT KEY.
+
+    TYPES: BEGIN OF ty_extraction_data,
+             status        TYPE string,
+             header_fields TYPE tt_header_fields,
+             line_items    TYPE tt_line_items,
+           END OF ty_extraction_data.
+
+    DATA ls_extraction_data TYPE ty_extraction_data.
+    DATA ls_line_item       TYPE ty_line_item.
+    DATA lt_json_data       TYPE REF TO data.
+*    DATA lv_value           TYPE string.
 
     CLEAR r_job_status.
 
@@ -431,29 +466,133 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
     ENDTRY.
     DATA(ls_status) = lo_response->get_status( ).
 *CATCH cx_web_message_error.
-    " TODO: variable is assigned but never used (ABAP cleaner)
     DATA(lv_response_json) = lo_response->get_text( ).
-    /ui2/cl_json=>deserialize( EXPORTING json        = lv_response_json
-                                         pretty_name = /ui2/cl_json=>pretty_mode-camel_case
-                               CHANGING  data        = lr_data ).
+*    /ui2/cl_json=>deserialize( EXPORTING json        = lv_response_json
+*                                         pretty_name = /ui2/cl_json=>pretty_mode-camel_case
+*                               CHANGING  data        = lr_data ).
 
     IF ls_status-code = '200'.
 
-      IF lv_status_job = 'DONE'.
-        " Extract data from the response and set to global table  gt_extracted_data
+      " Extract data from the response and set to global table  gt_extracted_data
 
-        r_job_status = lv_status_job.
+      " Your existing code to get the response...
 
+      /ui2/cl_json=>deserialize( EXPORTING json        = lv_response_json
+                                           pretty_name = /ui2/cl_json=>pretty_mode-camel_case
+                                 CHANGING  data        = lt_json_data ).
+
+      " Extract status
+      ASSIGN lt_json_data->('STATUS') TO FIELD-SYMBOL(<status>).
+      IF <status> IS ASSIGNED.
+*      lv_value = <status>.
+        ls_extraction_data-status = <status>->*.
       ENDIF.
+      IF ls_extraction_data-status = 'DONE'.
+        " Extract header fields
+        ASSIGN lt_json_data->('EXTRACTION') TO FIELD-SYMBOL(<extraction>).
+        IF <extraction> IS ASSIGNED.
+          ASSIGN <extraction>->('HEADER_FIELDS') TO FIELD-SYMBOL(<header_fields>).
+          IF <header_fields> IS ASSIGNED AND <header_fields> IS NOT INITIAL.
+            FIELD-SYMBOLS <table> TYPE STANDARD TABLE.
+            ASSIGN <header_fields>->* TO <table>.
+            IF sy-subrc = 0.
+              LOOP AT <table> ASSIGNING FIELD-SYMBOL(<header_field>).
+                APPEND INITIAL LINE TO ls_extraction_data-header_fields ASSIGNING FIELD-SYMBOL(<hf>).
+
+                ASSIGN <header_field>->('NAME') TO FIELD-SYMBOL(<name>).
+                ASSIGN <header_field>->('VALUE') TO FIELD-SYMBOL(<value>).
+                IF sy-subrc = 0 AND <value> IS NOT INITIAL.
+                  <hf>-name  = <name>->*.
+                  <hf>-value = <value>->*.
+
+                  " Map other fields if needed
+*                  ASSIGN COMPONENT 'CATEGORY' OF STRUCTURE <header_field> TO FIELD-SYMBOL(<category>).
+*                  IF sy-subrc = 0.
+*                    <hf>-category = <category>->*.
+*                  ENDIF.
+                ENDIF.
+              ENDLOOP.
+            ENDIF.
+          ENDIF.
+        ENDIF.
+
+        " Extract line items
+        " Extract line items
+        ASSIGN lt_json_data->('EXTRACTION') TO <extraction>.
+        IF <extraction> IS ASSIGNED.
+          ASSIGN <extraction>->('LINE_ITEMS') TO FIELD-SYMBOL(<line_items>).
+          IF <line_items> IS ASSIGNED AND <line_items> IS NOT INITIAL.
+            FIELD-SYMBOLS <items_table> TYPE STANDARD TABLE.
+            ASSIGN <line_items>->* TO <items_table>.
+            IF sy-subrc = 0.
+              LOOP AT <items_table> ASSIGNING FIELD-SYMBOL(<item_group>).
+                CLEAR ls_line_item.
+
+                FIELD-SYMBOLS <item_fields> TYPE STANDARD TABLE.
+                ASSIGN <item_group>->* TO <item_fields>.
+                IF sy-subrc <> 0.
+                  CONTINUE.
+                ENDIF.
+
+                LOOP AT <item_fields> ASSIGNING FIELD-SYMBOL(<field>).
+                  ASSIGN <field>->('NAME') TO <name>.
+                  ASSIGN <field>->('VALUE') TO <value>.
+
+                  IF sy-subrc = 0 AND <value> IS NOT INITIAL.
+                    CASE <name>->*.
+                      WHEN 'materialNumber'.
+                        ls_line_item-material_number = <value>->*.
+                      WHEN 'quantity'.
+                        ls_line_item-quantity = <value>->*.
+                      WHEN 'unitOfMeasure'.
+                        ls_line_item-unit_of_measure = <value>->*.
+                    ENDCASE.
+                  ENDIF.
+                ENDLOOP.
+
+                APPEND ls_line_item TO ls_extraction_data-line_items.
+              ENDLOOP.
+            ENDIF.
+          ENDIF.
+        ENDIF.
+
+        " Assign the extracted data to the global table and return job statu
+        r_job_status = ls_extraction_data-status.
+        " First clear the target table
+        CLEAR gt_extracted_data.
+
+        " Map header fields
+        LOOP AT ls_extraction_data-header_fields INTO DATA(ls_header).
+          APPEND INITIAL LINE TO gt_extracted_data ASSIGNING FIELD-SYMBOL(<fs_target>).
+
+          CASE ls_header-name.
+            WHEN 'deliveryNoteNumber'.
+              <fs_target>-delnotenum = ls_header-value.
+            WHEN 'purchaseOrderNumber'.
+              <fs_target>-ponumber = ls_header-value.
+            WHEN 'deliveryDate'.
+              <fs_target>-deliverydate = ls_header-value.
+          ENDCASE.
+        ENDLOOP.
+
+        " Map line items
+        LOOP AT ls_extraction_data-line_items INTO DATA(ls_item).
+          LOOP AT gt_extracted_data ASSIGNING <fs_target>.
+
+            " Map the line item fields
+            <fs_target>-material = ls_item-material_number.
+            <fs_target>-quantity = ls_item-quantity.
+            <fs_target>-unit     = ls_item-unit_of_measure.
+          ENDLOOP.
+        ENDLOOP.
+      ENDIF.
+      TRY.
+          lo_http_client->close( ).
+        CATCH cx_web_http_client_error.
+          " handle exception
+      ENDTRY.
     ELSE.
       r_job_status = 'FAILED'.
     ENDIF.
-
-    TRY.
-        lo_http_client->close( ).
-      CATCH cx_web_http_client_error.
-        " handle exception
-    ENDTRY.
   ENDMETHOD.
-
 ENDCLASS.
