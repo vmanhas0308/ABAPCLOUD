@@ -220,6 +220,91 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
     " Step 2: Get the HTTP request object
     DATA(lo_request) = lo_http_client->get_http_request( ).
 
+*    " NEW CODE ----------------------------------
+*    CONSTANTS c_boundary TYPE string VALUE '----DOCBOUNDARY123456'.
+*    CONSTANTS c_ct_opts  TYPE string VALUE 'application/json'.
+*    CONSTANTS c_ct_file  TYPE string VALUE 'application/pdf'.
+*    TYPES: BEGIN OF ty_options,
+*             clientId     TYPE string,
+*             documentType TYPE string,
+*             schemaName   TYPE string,
+*             templateId   TYPE string, " or type d, but for JSON usually string
+*             receivedDate TYPE string, " or type d, but for JSON usually string
+*           END OF ty_options.
+*
+*    DATA ls_opts TYPE ty_options.
+*    " Prepare JSON payload for options
+*    ls_opts = VALUE #( clientId     = 'default'
+*                       documentType = 'custom'   " or 'custom'
+*                       schemaName   = 'Delivery_Note_Schema'  " required if custom
+*                       templateId   = 'detect'
+*                       receivedDate = sy-datum ). " or any date you want to set, format as needed
+*    DATA lv_opts_json TYPE string.
+*    lv_opts_json = /ui2/cl_json=>serialize( data = ls_opts ).
+*
+*    " Build multipart body
+*    DATA(lv_body) = |--{ c_boundary }\r\n| &&
+*                     |Content-Disposition: form-data; name="options"\r\n| &&
+*                     |Content-Type: { c_ct_opts }\r\n\r\n| &&
+*                     |{ lv_opts_json } \r\n| &&
+*                     |--{ c_boundary }\r\n| &&
+*                     |Content-Disposition: form-data; name="file"; filename="delivery_note.pdf"\r\n| &&
+*                     |Content-Type: { c_ct_file }\r\n\r\n| &&
+*                     |{  i_file_content }\r\n| &&
+*                     |--{ c_boundary }--|.
+*
+**    " Setup HTTP destination
+**    DATA(lo_dest) = cl_http_destination_provider=>create_by_url(
+**                       i_url = |{ gv_base_url }/document-information-extraction/v1/document/jobs|
+**                     ).
+**    DATA lo_client = cl_web_http_client_manager=>create_by_http_destination( lo_dest ).
+**
+**    lo_http_client->get_http_request( )->set_method( if_web_http_request=>co_request_method_post ).
+*    lo_http_client->get_http_request( )->set_uri_path( |{ c_api_path }/document/jobs| ).
+*    lo_http_client->get_http_request( )->set_header_field( i_name  = 'Authorization'
+*                                                           i_value = |Bearer { gv_oauth }| ).
+*    lo_http_client->get_http_request( )->set_header_field( i_name  = 'Accept'
+*                                                           i_value = 'application/json' ).
+*    lo_http_client->get_http_request( )->set_header_field( i_name  = 'Content-Type'
+*                                                           i_value = |multipart/form-data; boundary={ c_boundary }| ).
+*
+*    lo_http_client->get_http_request( )->set_text( lv_body ).
+*
+*    TRY.
+*        DATA(lo_response) = lo_http_client->execute( if_web_http_client=>post ).
+*      CATCH cx_web_http_client_error.
+*        " handle exception
+*    ENDTRY.
+*
+*    DATA(lv_status) = lo_response->get_status( ).
+*
+*    IF lv_status-code = 202 OR lv_status-code = 201.
+*      " TODO: variable is assigned but only used in commented-out code (ABAP cleaner)
+*      DATA(lv_response_text) = lo_response->get_text( ).
+*      " Parse JSON to extract job id
+**      DATA(ls_resp) TYPE your_response_struct.
+**      CALL METHOD /ui2/cl_json=>deserialize
+**        EXPORTING
+**          json = lv_response_text
+**        CHANGING
+**          data = ls_resp.
+**      r_job = ls_resp-id.
+**      r_success = abap_true.
+**    ELSE.
+**      DATA(lv_error) = lo_response->get_text( ).
+**      " Log or raise for diagnostics
+**      r_success = abap_false.
+*    ENDIF.
+*
+*    TRY.
+*        lo_http_client->close( ).
+*      CATCH cx_web_http_client_error.
+*        " handle exception
+*    ENDTRY.
+
+
+
+*******************************NEW CODE **********************************
 *    " Step 3: Set headers
 *    lo_request->set_header_field( i_name  = '~request_method'
 *                                  i_value = 'POST' ).
@@ -241,14 +326,14 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
 
     " add multi-part request
     DATA(lo_request_part2) = lo_request->add_multipart( ).
-    "use Schema ID and Template ID
-*    lv_options = '{ "clientId": "default", "documentType": "custom", "templateId":"detect", ' &&
-*                 '"schemaName": "Delivery_Note_Schema", ' &&
-*                 '"receivedDate": "2025-07-28"' && '}'.
+    "use Schema Name and Template ID
+    lv_options = '{ "clientId": "default", "documentType": "custom", "templateId":"detect", ' &&
+                 '"schemaName": "Delivery_Note_Schema", ' &&
+                 '"receivedDate": "2025-07-28"' && '}'.
 
-    "If no schema/template ID then prepare JSON Pay-load for header Item
-    lv_options = '{ "extraction": { "headerFields": [ "deliveryNoteNumber", "purchaseOrderNumber", "deliveryDate" ], "lineItemFields": [ "materialNumber", "quantity", "unitOfMeasure" ] },' &&
-                   '"clientId": "default", "documentType": "custom", "receivedDate": "2025-07-28", "enrichment": { }}'.
+*    "If no schema/template ID then prepare JSON Pay-load for header Item
+*    lv_options = '{ "extraction": { "headerFields": [ "deliveryNoteNumber", "purchaseOrderNumber", "deliveryDate" ], "lineItemFields": [ "materialNumber", "quantity", "unitOfMeasure" ] },' &&
+*                   '"clientId": "default", "documentType": "custom", "receivedDate": "2025-07-28", "enrichment": { }}'.
 
 *lv_options = '{ "extraction": { "headerFields": [ "deliveryNoteNumber", "purchaseOrderNumber", "deliveryDate" ], "lineItemFields": [ "materialNumber", "quantity", "unitOfMeasure" ] },' &&
 *                   '"clientId": "default", "documentType": "custom", "receivedDate": "2025-07-28", "enrichment": { "sender": { "top": 5, "type": ' &&
@@ -267,7 +352,7 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
 
     "File Part
     DATA(lo_request_part) =  lo_request->add_multipart( ).
-    lv_content_disposition = 'form-data; name="file"; filename="delivery_note.pdf'.
+    lv_content_disposition = 'form-data; name="file"; filename="delivery_note.pdf"'.
     lo_request_part->set_header_field( i_name  = 'Content-Disposition' ##NO_TEXT
                                        i_value = lv_content_disposition ).
     lo_request_part->set_content_type( 'application/pdf' ).
