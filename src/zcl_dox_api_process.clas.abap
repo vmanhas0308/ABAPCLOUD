@@ -560,29 +560,25 @@ CLASS zcl_dox_api_process IMPLEMENTATION.
         r_job_status = ls_extraction_data-status.
         " First clear the target table
         CLEAR gt_extracted_data.
-
-        " Map header fields
-        LOOP AT ls_extraction_data-header_fields INTO DATA(ls_header).
+        DATA:lv_posnr TYPE posnr_va.
+        LOOP AT ls_extraction_data-line_items INTO DATA(ls_item).
           APPEND INITIAL LINE TO gt_extracted_data ASSIGNING FIELD-SYMBOL(<fs_target>).
 
-          CASE ls_header-name.
-            WHEN 'deliveryNoteNumber'.
-              <fs_target>-delnotenum = ls_header-value.
-            WHEN 'purchaseOrderNumber'.
-              <fs_target>-ponumber = ls_header-value.
-            WHEN 'deliveryDate'.
-              <fs_target>-deliverydate = ls_header-value.
-          ENDCASE.
-        ENDLOOP.
-
-        " Map line items
-        LOOP AT ls_extraction_data-line_items INTO DATA(ls_item).
-          LOOP AT gt_extracted_data ASSIGNING <fs_target>.
-
-            " Map the line item fields
-            <fs_target>-material = ls_item-material_number.
-            <fs_target>-quantity = ls_item-quantity.
-            <fs_target>-unit     = ls_item-unit_of_measure.
+          " Map the line item fields
+          <fs_target>-material = ls_item-material_number.
+          <fs_target>-quantity = ls_item-quantity.
+          <fs_target>-unit     = ls_item-unit_of_measure.
+          lv_posnr += 10.
+          <fs_target>-itemno  = lv_posnr.
+          LOOP AT ls_extraction_data-header_fields INTO DATA(ls_header).
+            CASE ls_header-name.
+              WHEN 'deliveryNoteNumber'.
+                <fs_target>-delnotenum = ls_header-value.
+              WHEN 'purchaseOrderNumber'.
+                <fs_target>-ponumber = ls_header-value.
+              WHEN 'deliveryDate'.
+                <fs_target>-deliverydate = ls_header-value.
+            ENDCASE.
           ENDLOOP.
         ENDLOOP.
       ENDIF.

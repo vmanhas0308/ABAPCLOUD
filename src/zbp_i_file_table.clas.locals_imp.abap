@@ -107,6 +107,7 @@ CLASS lhc_ZI_FILE_TABLE IMPLEMENTATION.
                                %is_draft = keys[ 1 ]-%is_draft
                                end_user  = keys[ 1 ]-end_user
                                %target   = VALUE #( FOR ls_data IN lt_extracted_data
+
                                                     ( %cid         = |{ ls_data-delnotenum }{ ls_data-itemno }|
                                                       %is_draft    = keys[ 1 ]-%is_draft
                                                       enduser      = sy-uname
@@ -133,14 +134,14 @@ CLASS lhc_ZI_FILE_TABLE IMPLEMENTATION.
          BY \_ses_excel
          ALL FIELDS WITH
          CORRESPONDING #( keys )
-         RESULT DATA(lt_excel).
+         RESULT DATA(lt_existing_data).
 
     " Delete already existing entries from child entity
     MODIFY ENTITIES OF zi_file_table IN LOCAL MODE
            ENTITY zi_file_upload_data
-           DELETE FROM VALUE #( FOR ls_excel IN lt_excel
-                                ( %is_draft = ls_excel-%is_draft
-                                  %key      = ls_excel-%key ) )
+           DELETE FROM VALUE #( FOR ls_existing IN lt_existing_data
+                                ( %is_draft =  ls_existing-%is_draft
+                                  %key      =  ls_existing-%key ) )
            " TODO: variable is assigned but never used (ABAP cleaner)
            MAPPED DATA(lt_mapped_delete)
            " TODO: variable is assigned but never used (ABAP cleaner)
@@ -159,8 +160,8 @@ CLASS lhc_ZI_FILE_TABLE IMPLEMENTATION.
            " TODO: variable is assigned but never used (ABAP cleaner)
            REPORTED DATA(lt_reported_create)
            " TODO: variable is assigned but never used (ABAP cleaner)
-           FAILED DATA(lt_failed_).
-
+           FAILED DATA(lt_failed_create).
+    CHECK lt_failed_create IS INITIAL.
     APPEND VALUE #( %tky = lt_inv[ 1 ]-%tky ) TO mapped-zi_file_table.
     APPEND VALUE #( %tky = lt_inv[ 1 ]-%tky
                     %msg = new_message_with_text( severity = if_abap_behv_message=>severity-success
